@@ -1,6 +1,12 @@
 import contextlib
 import sqlite3
-from work_with_time import reparse, intersect_diapazon, parse_wh, capacity, income_by_transport
+from work_with_time import (
+    reparse,
+    intersect_diapazon,
+    parse_wh,
+    capacity,
+    income_by_transport,
+)
 from datetime import datetime
 
 
@@ -15,7 +21,6 @@ def get_database():
     db.close()
 
 
-
 def all_couriers_check(db):
     cur = db.cursor()
     sql = """
@@ -27,7 +32,7 @@ def all_couriers_check(db):
     result = set()
     cur.execute(sql)
     for i in cur.fetchall():
-        result.add(i['courier_id'])
+        result.add(i["courier_id"])
     return result
 
 
@@ -42,8 +47,9 @@ def all_orders_check(db):
     result = set()
     cur.execute(sql)
     for i in cur.fetchall():
-        result.add(i['order_id'])
+        result.add(i["order_id"])
     return result
+
 
 def create_courier(db, courier_id, courier_type, working_hours, regions):
     """
@@ -74,7 +80,7 @@ def create_courier(db, courier_id, courier_type, working_hours, regions):
                 )
             VALUES (?, ?, ?);
     """
-    cur.executemany(sql,items)
+    cur.executemany(sql, items)
 
     items = []
     for num in regions:
@@ -87,10 +93,9 @@ def create_courier(db, courier_id, courier_type, working_hours, regions):
                 )
             VALUES (?, ?);
     """
-    cur.executemany(sql,items)
+    cur.executemany(sql, items)
     db.commit()
     return courier_id
-
 
 
 def _count_income(db, courier_id):
@@ -111,6 +116,7 @@ def _count_income(db, courier_id):
     for i in cur.fetchone():
         income = i
     return income
+
 
 def _courier_rating(db, courier_id):
     """Считает рейтинг курьера, если он сделал хотя бы один заказ"""
@@ -145,10 +151,11 @@ def _courier_rating(db, courier_id):
     avg_time_delivery = cur.fetchall()
     min_time = []
     for row in avg_time_delivery:
-        min_time.append(row['avg'])
+        min_time.append(row["avg"])
     t = min(min_time)
-    rate = (60*60 - min(t, 60*60))/(60*60) * 5
+    rate = (60 * 60 - min(t, 60 * 60)) / (60 * 60) * 5
     return rate
+
 
 def profile_after_change(db, courier_id):
     """
@@ -165,7 +172,7 @@ def profile_after_change(db, courier_id):
     """
     cur.execute(sql, (courier_id,))
     transport = cur.fetchone()
-    if not transport: #если нет транспорта, значит нет курьера
+    if not transport:  # если нет транспорта, значит нет курьера
         return False
 
     sql = """
@@ -178,7 +185,7 @@ def profile_after_change(db, courier_id):
     """
     cur.execute(sql, (courier_id,))
     regions = cur.fetchall()
-    region = [i['region_id'] for i in regions]
+    region = [i["region_id"] for i in regions]
 
     sql = """
         SELECT
@@ -191,10 +198,10 @@ def profile_after_change(db, courier_id):
     """
     cur.execute(sql, (courier_id,))
     hours = cur.fetchall()
-    working_hours = [ reparse(i) for i in hours]
+    working_hours = [reparse(i) for i in hours]
     answer = {
         "courier_id": courier_id,
-        "courier_type": transport['courier_type'],
+        "courier_type": transport["courier_type"],
         "regions": region,
         "working_hours": working_hours,
     }
@@ -253,11 +260,12 @@ def create_order(db, order_id, weight, region, delivery_hours):
     db.commit()
     return order_id
 
+
 def _droped_orders_after_change(db, orders):
     cur = db.cursor()
     drop_orders_id = []
     for id in orders:
-        drop_orders_id.append((id, ))
+        drop_orders_id.append((id,))
 
     sql = """
         DELETE FROM
@@ -266,7 +274,6 @@ def _droped_orders_after_change(db, orders):
             order_id = ?;
     """
     cur.executemany(sql, drop_orders_id)
-
 
 
 def change_regions_courier(db, courier_id, regions):
@@ -294,7 +301,7 @@ def change_regions_courier(db, courier_id, regions):
     """
     cur.executemany(sql, items)
 
-    #Выбираем все id заказов, которые стоит удалить при изменении региона
+    # Выбираем все id заказов, которые стоит удалить при изменении региона
     sql = """
         SELECT
             OrdersAssigned.order_id
@@ -308,16 +315,19 @@ def change_regions_courier(db, courier_id, regions):
             OrdersAssigned.courier_id = ?
             and
             Orders.region NOT IN ({});
-        """.format(",".join("?" * len(regions)))
+        """.format(
+        ",".join("?" * len(regions))
+    )
 
     cur.execute(sql, (courier_id, *regions))
     orders = cur.fetchall()
     result = []
     for row in orders:
-        result.append(row['order_id'])
+        result.append(row["order_id"])
     _droped_orders_after_change(db, result)
     db.commit()
     return
+
 
 def change_courier_type(db, courier_id, courier_type):
     """Меняет тип курьера"""
@@ -350,15 +360,16 @@ def change_courier_type(db, courier_id, courier_type):
     orders = cur.fetchall()
     result = set()
     for row in orders:
-        if row['weight'] > max_capacity:
-            result.add(row['order_id'])
+        if row["weight"] > max_capacity:
+            result.add(row["order_id"])
         else:
-            max_capacity -= row['weight']
+            max_capacity -= row["weight"]
 
     result = list(result)
     _droped_orders_after_change(db, result)
     db.commit()
     return
+
 
 def change_working_hours_courier(db, courier_id, working_hours):
     """Меняет часы работы курьера"""
@@ -405,16 +416,17 @@ def change_working_hours_courier(db, courier_id, working_hours):
     result = set()
 
     for row in orders:
-        item = row['delivery_hours_start'], row['delivery_hours_end']
-        if row['order_id'] in result:
+        item = row["delivery_hours_start"], row["delivery_hours_end"]
+        if row["order_id"] in result:
             continue
         elif not intersect_diapazon(time_work, item):
-            result.add(row['order_id'])
+            result.add(row["order_id"])
 
     result = list(result)
     _droped_orders_after_change(db, result)
     db.commit()
     return
+
 
 def check_order_complete(db, order_id):
     """
@@ -434,6 +446,7 @@ def check_order_complete(db, order_id):
         return True
     return False
 
+
 def check_order_in_assign(db, courier_id, order_id):
     """
     Проверяет, что заказ выполнил курьер на которого он был выписан
@@ -451,6 +464,7 @@ def check_order_in_assign(db, courier_id, order_id):
     if cur.fetchone():
         return True
     return False
+
 
 def change_current_time(db, order_id, courier_id, current_time):
     """
@@ -476,7 +490,6 @@ def change_current_time(db, order_id, courier_id, current_time):
     cur.execute(sql, (current_time, courier_id))
 
 
-
 def add_time_delivery(db, order_id, courier_id, complete_time):
     """
     Вычисляет время доставки заказа в секундах
@@ -495,7 +508,6 @@ def add_time_delivery(db, order_id, courier_id, complete_time):
     for i in cur.fetchone():
         region = i
 
-
     sql = """
         SELECT
             start
@@ -509,8 +521,8 @@ def add_time_delivery(db, order_id, courier_id, complete_time):
     for i in cur.fetchone():
         first_time = i
 
-    first_time = datetime.strptime(first_time, '%Y-%m-%dT%H:%M:%S.%fZ')
-    complete_time = datetime.strptime(complete_time, '%Y-%m-%dT%H:%M:%S.%fZ')
+    first_time = datetime.strptime(first_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+    complete_time = datetime.strptime(complete_time, "%Y-%m-%dT%H:%M:%S.%fZ")
     duration = complete_time - first_time
     delivery_second = duration.total_seconds()
 
@@ -556,8 +568,6 @@ def create_order_complete(db, courier_id, order_id, complete_time):
     cur.execute(sql, (courier_id, order_id, complete_time, region))
 
 
-
-
 def _idempt_assign_order(db, courier_id):
     cur = db.cursor()
     sql = """
@@ -582,6 +592,7 @@ def _idempt_assign_order(db, courier_id):
     else:
         return False
 
+
 def _check_courier(db, courier_id):
     cur = db.cursor()
     sql = """
@@ -592,10 +603,11 @@ def _check_courier(db, courier_id):
         WHERE
             courier_id = ?;
     """
-    cur.execute(sql, (courier_id,))#если нет такого курьера
+    cur.execute(sql, (courier_id,))  # если нет такого курьера
     if not cur.fetchone():
         return False
     return True
+
 
 def assign_order(db, courier_id):
     """
@@ -603,11 +615,11 @@ def assign_order(db, courier_id):
     Обработчик идемпотентный. Заказы, выданные одному курьеру, не доступны для выдачи другому.
     """
 
-    check = _check_courier(db, courier_id)#если курьера нет в БД
+    check = _check_courier(db, courier_id)  # если курьера нет в БД
     if not check:
         return check
 
-    answer = _idempt_assign_order(db, courier_id)#если уже есть заказы у курьера
+    answer = _idempt_assign_order(db, courier_id)  # если уже есть заказы у курьера
     if answer:
         return answer
 
@@ -666,31 +678,32 @@ def assign_order(db, courier_id):
             and Orders.region IN ({})
         ORDER BY
             Orders.weight ASC;
-        """.format(",".join("?" * len(regions)))
+        """.format(
+        ",".join("?" * len(regions))
+    )
 
     cur.execute(sql, (max_capacity, *regions))
     orders = cur.fetchall()
 
     result = {}
     for row in orders:
-        item = row['delivery_hours_start'], row['delivery_hours_end']
-        if row['order_id'] in result:
+        item = row["delivery_hours_start"], row["delivery_hours_end"]
+        if row["order_id"] in result:
             continue
         elif intersect_diapazon(time_work, item):
-            if row['weight'] > max_capacity:
+            if row["weight"] > max_capacity:
                 break
-            result[row['order_id']] = row['region']
-            max_capacity -= row['weight']
+            result[row["order_id"]] = row["region"]
+            max_capacity -= row["weight"]
 
     items_for_assign = []
     itmes_for_income = []
     income = income_by_transport(courier_type)
 
-    assign_time = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-4] + "Z"
+    assign_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-4] + "Z"
     for order in result:
         items_for_assign.append((courier_id, order, assign_time, result[order]))
         itmes_for_income.append((courier_id, order, income))
-
 
     sql = """
         INSERT INTO
@@ -714,7 +727,6 @@ def assign_order(db, courier_id):
             VALUES (?, ?, ?);
     """
     cur.executemany(sql, itmes_for_income)
-
 
     sql = """
         INSERT INTO
