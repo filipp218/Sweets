@@ -14,4 +14,4 @@ RUN pip install -r requirements.txt
 
 COPY *.py ./
 
-EXPOSE 8000
+
