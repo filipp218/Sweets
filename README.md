@@ -32,7 +32,7 @@ https://github.com/filipp218/Sweets.git
 pip install -r app/requirements.txt
 ```
 
-- Поднимите docker-compose
+- Установите docker, docker-compose и поднимете docker-compose
 ```
 docker-compose up
 ```
