@@ -698,7 +698,7 @@ def assign_order(db, courier_id):
 
     items_for_assign = []
     itmes_for_income = []
-    income = income_by_transport(courier_type)
+    income = income_by_transport(courier_type)*500
 
     assign_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-4] + "Z"
     for order in result:
