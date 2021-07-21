@@ -21,41 +21,19 @@ def get_database():
     db.close()
 
 
-def all_couriers_check(db):
-    cur = db.cursor()
-    sql = """
-        SELECT
-            courier_id
-        FROM
-            Couriers;
-    """
-    result = set()
-    cur.execute(sql)
-    for i in cur.fetchall():
-        result.add(i["courier_id"])
-    return result
-
-
-def all_orders_check(db):
-    cur = db.cursor()
-    sql = """
-        SELECT
-            order_id
-        FROM
-            Orders;
-    """
-    result = set()
-    cur.execute(sql)
-    for i in cur.fetchall():
-        result.add(i["order_id"])
-    return result
-
-
 def create_courier(db, courier_id, courier_type, working_hours, regions):
     """
     Добавляет курьера в базу данных
     """
     cur = db.cursor()
+
+    sql = """
+        SELECT * FROM Couriers
+        WHERE courier_id = ?;
+    """
+    cur.execute(sql, (courier_id,))
+    if cur.fetchone() is not None:  #После профилирования
+        return courier_id
 
     sql = """
         INSERT INTO
@@ -231,6 +209,15 @@ def create_order(db, order_id, weight, region, delivery_hours):
     Добавляет заказы в базу данных
     """
     cur = db.cursor()
+
+    sql = """
+        SELECT * FROM Orders
+        WHERE order_id = ?;
+    """
+    cur.execute(sql, (order_id,))
+    if cur.fetchone() is not None:  #После профилирования
+        return order_id
+
     sql = """
         INSERT INTO
             Orders(

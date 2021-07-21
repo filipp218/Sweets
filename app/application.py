@@ -23,14 +23,14 @@ from sql import (
     change_current_time,
     add_time_delivery,
     profile_after_change,
-    all_couriers_check,
-    all_orders_check,
 )
 from work_with_time import (
     validate_work_hours,
     information_error_courier,
     information_error_order,
 )
+
+from cProfile import Profile
 
 
 app = Flask(__name__)
@@ -49,7 +49,6 @@ def add_couriers():
     и курьер на автомобиле. От типа курьера зависит его грузоподъемность — 10 кг, 15 кг и 50 кг соответственно.
     Районы задаются целыми положительными числами. График работы задается списком строк формата  HH:MM-HH:MM .
     """
-
     answer_error = {"validation_error": {"couriers": []}}
     id_error = answer_error["validation_error"]
     valid_couriers = {"couriers": []}
@@ -71,12 +70,7 @@ def add_couriers():
         return answer_error, 400
 
     with get_database() as db:
-        all_couriers = all_couriers_check(
-            db
-        )  # список id курьеров, которые уже есть, чтобы не добавлять курьера если id уже занят
         for row in json_couriers["data"]:
-            if row["courier_id"] in all_couriers:
-                continue
             create_courier(
                 db,
                 row["courier_id"],
@@ -155,12 +149,7 @@ def add_orders():
         return answer_error, 400
 
     with get_database() as db:
-        all_orders = all_orders_check(
-            db
-        )  # список id заказов, которые уже есть, чтобы не добавлять заказ если id уже занят
         for row in json_orders["data"]:
-            if row["order_id"] in all_orders:
-                continue
             create_order(
                 db, row["order_id"], row["weight"], row["region"], row["delivery_hours"]
             )
@@ -228,3 +217,4 @@ def orders_complete():
 
 if __name__ == "__main__":
     app.run()
+
